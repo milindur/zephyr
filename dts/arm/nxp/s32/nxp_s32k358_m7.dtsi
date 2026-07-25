@@ -917,6 +917,12 @@
 			};
 		};
 
+		/*
+		 * SAI and uSDHC placeholder nodes: no Zephyr binding or driver
+		 * exists for these IPs on S32K3 yet; the nodes document the
+		 * instances so board files and future drivers can reference
+		 * them.
+		 */
 		sai0: sai@4036c000 {
 			compatible = "nxp,s32-sai";
 			reg = <0x4036c000 0x4000>;
@@ -988,7 +994,7 @@
 
 		stm0: stm@40274000 {
 			compatible = "nxp,s32-sys-timer";
-			reg = <0x40274000 0x10000>;
+			reg = <0x40274000 0x4000>;
 			interrupts = <39 0>;
 			clocks = <&clock NXP_S32_STM0_CLK>;
 			status = "disabled";
@@ -996,7 +1002,7 @@
 
 		stm1: stm@40474000 {
 			compatible = "nxp,s32-sys-timer";
-			reg = <0x40474000 0x10000>;
+			reg = <0x40474000 0x4000>;
 			interrupts = <40 0>;
 			clocks = <&clock NXP_S32_STM1_CLK>;
 			status = "disabled";

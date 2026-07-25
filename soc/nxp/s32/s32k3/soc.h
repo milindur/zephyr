@@ -9,8 +9,10 @@
 
 #if defined(CONFIG_SOC_S32K358)
 #include <S32K358.h>
-#else
+#elif defined(CONFIG_SOC_S32K344)
 #include <S32K344.h>
+#else
+#error "Unsupported S32K3 SoC"
 #endif
 #include <core_cm7.h>
 

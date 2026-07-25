@@ -32,12 +32,12 @@ Hardware
 - MCP2221A USB-to-UART/I2C bridge on a separate USB connector
 
 Supported Features
-******************
+==================
 
 .. zephyr:board-supported-hw::
 
 Connections and IOs
-*******************
+===================
 
 Pin assignments follow the S32K3X8EVB-Q289 Hardware User Manual (rev. C):
 
@@ -83,6 +83,9 @@ Applications for the ``s32k3x8evb/s32k358`` board can be built in the usual
 way (see :ref:`build_an_application`). Flashing and debugging use an external
 SEGGER J-Link probe attached to one of the JTAG/Cortex Debug connectors.
 
+Flashing
+========
+
 .. warning::
    Every J-Link operation on S32K3 devices (flash, reset, attach) must pass
    SEGGER's ``S32K3xx_NoRAMInit.JLinkScript``. Without it, the J-Link ECC RAM
@@ -112,6 +115,16 @@ reset the board shows the Zephyr banner:
 
    *** Booting Zephyr OS build ... ***
    Hello World! s32k3x8evb/s32k358
+
+If the J-Link script file is placed at
+``boards/nxp/s32k3x8evb/support/S32K3xx_NoRAMInit.JLinkScript`` (git-ignored),
+``west flash`` and ``west debug`` pick it up automatically.
+
+Debugging
+=========
+
+``west debug`` attaches through the same J-Link probe; the script-file rule
+above applies to every J-Link invocation, including attach and reset.
 
 References
 **********

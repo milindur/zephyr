@@ -1,3 +1,6 @@
+# Copyright 2026 NXP
+# SPDX-License-Identifier: Apache-2.0
+
 identifier: s32k3x8evb
 name: NXP S32K3X8EVB-Q289
 type: mcu
@@ -10,4 +13,5 @@ toolchain:
 supported:
   - gpio
   - uart
+  - watchdog
 vendor: nxp
