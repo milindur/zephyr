@@ -1,0 +1,6 @@
+# Copyright 2026 NXP
+# SPDX-License-Identifier: Apache-2.0
+
+config BOARD_S32K3X8EVB
+	select SOC_S32K358
+	select SOC_PART_NUMBER_S32K358GHT1MJBST

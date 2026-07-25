@@ -1,0 +1,102 @@
+/*
+ * Copyright 2026 NXP
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/dts-v1/;
+#include <arm/nxp/s32/nxp_s32k358_m7.dtsi>
+#include "s32k3x8evb-pinctrl.dtsi"
+#include <zephyr/dt-bindings/gpio/gpio.h>
+#include <zephyr/dt-bindings/input/input-event-codes.h>
+
+/ {
+	model = "NXP S32K3X8EVB-Q289";
+	compatible = "nxp,s32k3x8evb";
+
+	chosen {
+		zephyr,sram = &sram0_2;
+		zephyr,flash = &flash0;
+		zephyr,code-partition = &code_partition;
+		zephyr,itcm = &itcm;
+		zephyr,dtcm = &dtcm;
+		zephyr,console = &lpuart3;
+		zephyr,shell-uart = &lpuart3;
+		zephyr,flash-controller = &c40fc;
+	};
+
+	aliases {
+		led0 = &user_led;
+		sw0 = &user_button;
+		watchdog0 = &swt0;
+	};
+
+	leds {
+		compatible = "gpio-leds";
+
+		user_led: led_0 {
+			gpios = <&gpiof_h 5 GPIO_ACTIVE_HIGH>;
+			label = "User LED (PTF21)";
+		};
+	};
+
+	gpio-keys {
+		compatible = "gpio-keys";
+
+		user_button: button_0 {
+			gpios = <&gpiob_h 1 GPIO_ACTIVE_LOW>;
+			label = "User Button (PTB17)";
+			zephyr,code = <INPUT_KEY_0>;
+		};
+	};
+};
+
+&pmc {
+	/* Run mode drawing from PLL requires the last-mile regulator */
+	lm-reg;
+};
+
+&c40fc {
+	status = "okay";
+};
+
+&flash0 {
+	status = "okay";
+
+	partitions {
+		compatible = "fixed-partitions";
+		#address-cells = <1>;
+		#size-cells = <1>;
+
+		ivt_header: partition@0 {
+			label = "ivt-header";
+			reg = <0x00000000 0x100>;
+		};
+
+		code_partition: partition@100 {
+			label = "code-partition";
+			reg = <0x00000100 (DT_SIZE_K(8144) - 0x100)>;
+		};
+	};
+};
+
+&eirq0 {
+	pinctrl-0 = <&eirq0_default>;
+	pinctrl-names = "default";
+	status = "okay";
+};
+
+&gpiob_h {
+	status = "okay";
+};
+
+&gpiof_h {
+	status = "okay";
+};
+
+&lpuart3 {
+	pinctrl-0 = <&lpuart3_default>;
+	pinctrl-names = "default";
+	current-speed = <115200>;
+	status = "okay";
+};

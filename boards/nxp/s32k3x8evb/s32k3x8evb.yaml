@@ -1,0 +1,13 @@
+identifier: s32k3x8evb
+name: NXP S32K3X8EVB-Q289
+type: mcu
+arch: arm
+ram: 768
+flash: 8144
+toolchain:
+  - zephyr
+  - gnuarmemb
+supported:
+  - gpio
+  - uart
+vendor: nxp

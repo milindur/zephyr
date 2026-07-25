@@ -1,0 +1,28 @@
+/*
+ * Copyright 2026 NXP
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+#include <nxp/s32/S32K358_K348_K338_K328_289BGA-pinctrl.h>
+
+&pinctrl {
+	eirq0_default: eirq0_default {
+		group1 {
+			pinmux = <PTB17_EIRQ31>;
+			input-enable;
+		};
+	};
+
+	lpuart3_default: lpuart3_default {
+		group1 {
+			pinmux = <PTD2_LPUART3_TX_O>;
+			output-enable;
+		};
+
+		group2 {
+			pinmux = <PTD3_LPUART3_RX>;
+			input-enable;
+		};
+	};
+};
