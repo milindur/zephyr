@@ -11,6 +11,27 @@
 #include <zephyr/sys/reboot.h>
 #endif /* CONFIG_REBOOT */
 
+/*
+ * Some device headers (e.g. S32K358.h) already provide equivalent MC_ME
+ * register macros with the same names; this file uses its own definitions.
+ */
+#undef MC_ME_CTL_KEY_KEY_MASK
+#undef MC_ME_CTL_KEY_KEY
+#undef MC_ME_MODE_CONF_DEST_RST_MASK
+#undef MC_ME_MODE_CONF_DEST_RST
+#undef MC_ME_MODE_CONF_FUNC_RST_MASK
+#undef MC_ME_MODE_CONF_FUNC_RST
+#undef MC_ME_MODE_CONF_STANDBY_MASK
+#undef MC_ME_MODE_CONF_STANDBY
+#undef MC_ME_MODE_UPD_MODE_UPD_MASK
+#undef MC_ME_MODE_UPD_MODE_UPD
+#undef MC_ME_MODE_STAT_PREV_MODE_MASK
+#undef MC_ME_MODE_STAT_PREV_MODE
+#undef MC_ME_MAIN_COREID_CIDX_MASK
+#undef MC_ME_MAIN_COREID_CIDX
+#undef MC_ME_MAIN_COREID_PIDX_MASK
+#undef MC_ME_MAIN_COREID_PIDX
+
 /* Control Key Register */
 #define MC_ME_CTL_KEY                   0x0
 #define MC_ME_CTL_KEY_KEY_MASK          GENMASK(15, 0)

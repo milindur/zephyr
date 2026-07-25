@@ -11,6 +11,35 @@
 #include <zephyr/dt-bindings/pinctrl/nxp-siul2-pinctrl.h>
 #include <zephyr/sys/util.h>
 
+/*
+ * Some device headers (e.g. S32K358.h) already provide equivalent SIUL2
+ * register macros with the same names; this file uses its own definitions.
+ */
+#undef SIUL2_MSCR_SSS_MASK
+#undef SIUL2_MSCR_SSS
+#undef SIUL2_MSCR_SMC_MASK
+#undef SIUL2_MSCR_SMC
+#undef SIUL2_MSCR_IFE_MASK
+#undef SIUL2_MSCR_IFE
+#undef SIUL2_MSCR_DSE_MASK
+#undef SIUL2_MSCR_DSE
+#undef SIUL2_MSCR_PUS_MASK
+#undef SIUL2_MSCR_PUS
+#undef SIUL2_MSCR_PUE_MASK
+#undef SIUL2_MSCR_PUE
+#undef SIUL2_MSCR_SRC_MASK
+#undef SIUL2_MSCR_SRC
+#undef SIUL2_MSCR_PKE_MASK
+#undef SIUL2_MSCR_PKE
+#undef SIUL2_MSCR_INV_MASK
+#undef SIUL2_MSCR_INV
+#undef SIUL2_MSCR_IBE_MASK
+#undef SIUL2_MSCR_IBE
+#undef SIUL2_MSCR_OBE_MASK
+#undef SIUL2_MSCR_OBE
+#undef SIUL2_IMCR_SSS_MASK
+#undef SIUL2_IMCR_SSS
+
 /* SIUL2 Multiplexed Signal Configuration */
 #define SIUL2_MSCR_SSS_MASK GENMASK(3, 0)
 #define SIUL2_MSCR_SSS(v)   FIELD_PREP(SIUL2_MSCR_SSS_MASK, (v))

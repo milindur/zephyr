@@ -30,6 +30,43 @@ LOG_MODULE_REGISTER(swt_nxp_s32);
 #else
 /* Control */
 #define SWT_CR           0x0
+/*
+ * Some device headers (e.g. S32K358.h) already provide equivalent register
+ * macros with the same names; this file uses its own definitions.
+ */
+#undef SWT_CO_CNT_MASK
+#undef SWT_CO_CNT
+#undef SWT_CR_FRZ_MASK
+#undef SWT_CR_FRZ
+#undef SWT_CR_HLK_MASK
+#undef SWT_CR_HLK
+#undef SWT_CR_ITR_MASK
+#undef SWT_CR_ITR
+#undef SWT_CR_RIA_MASK
+#undef SWT_CR_RIA
+#undef SWT_CR_SLK_MASK
+#undef SWT_CR_SLK
+#undef SWT_CR_SMD_MASK
+#undef SWT_CR_SMD
+#undef SWT_CR_STP_MASK
+#undef SWT_CR_STP
+#undef SWT_CR_WEN_MASK
+#undef SWT_CR_WEN
+#undef SWT_CR_WND_MASK
+#undef SWT_CR_WND
+#undef SWT_IR_TIF_MASK
+#undef SWT_IR_TIF
+#undef SWT_RRR_RRF_MASK
+#undef SWT_RRR_RRF
+#undef SWT_SK_SK_MASK
+#undef SWT_SK_SK
+#undef SWT_SR_WSC_MASK
+#undef SWT_SR_WSC
+#undef SWT_TO_WTO_MASK
+#undef SWT_TO_WTO
+#undef SWT_WN_WST_MASK
+#undef SWT_WN_WST
+
 #define SWT_CR_WEN_MASK  BIT(0)
 #define SWT_CR_WEN(v)    FIELD_PREP(SWT_CR_WEN_MASK, (v))
 #define SWT_CR_FRZ_MASK  BIT(1)

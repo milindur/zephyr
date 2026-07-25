@@ -11,6 +11,31 @@
 
 /* Destructive Event Status Register */
 #define MC_RGM_DES                      0x0
+/*
+ * Some device headers (e.g. S32K358.h) already provide equivalent register
+ * macros with the same names; this file uses its own definitions.
+ */
+#undef MC_RGM_DES_F_POR_MASK
+#undef MC_RGM_DES_F_POR
+#undef MC_RGM_DRET_DRET_MASK
+#undef MC_RGM_DRET_DRET
+#undef MC_RGM_ERCTRL_ERASSERT_MASK
+#undef MC_RGM_ERCTRL_ERASSERT
+#undef MC_RGM_FES_F_EXR_MASK
+#undef MC_RGM_FES_F_EXR
+#undef MC_RGM_FREC_FREC_MASK
+#undef MC_RGM_FREC_FREC
+#undef MC_RGM_FRENTC_FRET_EN_MASK
+#undef MC_RGM_FRENTC_FRET_EN
+#undef MC_RGM_FRENTC_FRET_TIMEOUT_MASK
+#undef MC_RGM_FRENTC_FRET_TIMEOUT
+#undef MC_RGM_FRET_FRET_MASK
+#undef MC_RGM_FRET_FRET
+#undef MC_RGM_RDSS_DES_RES_MASK
+#undef MC_RGM_RDSS_DES_RES
+#undef MC_RGM_RDSS_FES_RES_MASK
+#undef MC_RGM_RDSS_FES_RES
+
 #define MC_RGM_DES_F_POR_MASK           BIT(0)
 #define MC_RGM_DES_F_POR(v)             FIELD_PREP(MC_RGM_DES_F_POR_MASK, (v))
 /* Functional / External Reset Status Register */

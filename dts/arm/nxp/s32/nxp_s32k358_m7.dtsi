@@ -585,7 +585,7 @@
 
 		lpi2c0: i2c@40350000 {
 			compatible = "nxp,lpi2c";
-			reg = <0x40350000 0x10000>;
+			reg = <0x40350000 0x4000>;
 			clocks = <&clock NXP_S32_LPI2C0_CLK>;
 			#address-cells = <1>;
 			#size-cells = <0>;
@@ -595,7 +595,7 @@
 
 		lpi2c1: i2c@40354000 {
 			compatible = "nxp,lpi2c";
-			reg = <0x40354000 0x10000>;
+			reg = <0x40354000 0x4000>;
 			clocks = <&clock NXP_S32_LPI2C1_CLK>;
 			#address-cells = <1>;
 			#size-cells = <0>;
