@@ -6,8 +6,9 @@ Overview
 The S32K3X8EVB-Q289 is an evaluation board for the NXP S32K358 general-purpose
 automotive MCU (Arm Cortex-M7 lockstep pair plus one independent Cortex-M7,
 8 MiB flash, 768 KiB system SRAM, 289 MAPBGA). The board features an FS26
-power SBC, an on-board debug interface, Arduino-footprint expansion headers,
-user RGB LEDs, push buttons, potentiometers, a touch pad, an SD card slot and
+power SBC, an on-board debug interface (OpenSDA), a dedicated USB-to-UART/I2C
+bridge (MCP2221A), Arduino-footprint expansion headers, two user RGB LEDs,
+two push buttons, potentiometers, a touch pad, an SD card slot and
 CAN/LIN/Ethernet interfaces.
 
 Zephyr runs on the lockstep Cortex-M7 core (CM7_0).
@@ -23,9 +24,12 @@ Hardware
     flash, 768 KiB system SRAM (SRAM0..2), 64 KiB ITCM and 128 KiB DTCM per
     core pair
 
-- FS26 power system basis chip
-- On-board debug interface on the J55 micro-USB connector, plus JTAG
+- FS26 power system basis chip. In the default board configuration the FS26
+  starts in debug mode, so the firmware does not need to service the FS26
+  watchdog.
+- On-board OpenSDA debug interface (micro-USB), 20-pin Cortex Debug and JTAG
   connectors for an external debugger
+- MCP2221A USB-to-UART/I2C bridge on a separate USB connector
 
 Supported Features
 ******************
@@ -35,12 +39,7 @@ Supported Features
 Connections and IOs
 *******************
 
-.. note::
-   The pin assignments below follow the NXP S32K358 RTD example projects and
-   are pending verification against the S32K3X8EVB-Q289 hardware user manual
-   and schematic (available from NXP with a registered account). Verify the
-   console, LED and button wiring against the board manual before relying on
-   them.
+Pin assignments follow the S32K3X8EVB-Q289 Hardware User Manual (rev. C):
 
 .. list-table:: Default Zephyr peripherals
    :header-rows: 1
@@ -48,21 +47,32 @@ Connections and IOs
    * - Function
      - MCU pin
      - Usage
-   * - LPUART3 TX
-     - PTD2
-     - Console output, 115200 8N1
-   * - LPUART3 RX
-     - PTD3
-     - Console input
-   * - PTF21
+   * - LPUART13 TX
+     - PTC26
+     - Console output to the MCP2221A USB-to-UART bridge (default
+       zero-ohm configuration), 115200 8N1
+   * - LPUART13 RX
+     - PTC27
+     - Console input from the MCP2221A bridge
+   * - PTG29 / PTG30 / PTG31
      - GPIO output
-     - User LED (``led0``)
-   * - PTB17
-     - GPIO input, EIRQ31
-     - User button (``sw0``), external interrupt capable
+     - User RGB LED D32 red/green/blue (``led0``/``led1``/``led2``),
+       active high
+   * - PTF21 / PTF22 / PTF23
+     - GPIO output
+     - User RGB LED D33 red/green/blue, active high
+   * - PTH1
+     - GPIO input, EIRQ17
+     - User push button SW4 (``sw0``), active high
+   * - PTH3
+     - GPIO input, EIRQ19
+     - User push button SW5 (``sw1``), active high
 
-The console is not hard-wired: connect a 3.3 V USB-UART adapter (or the
-on-board debug interface's virtual COM port, if routed) to the LPUART3 pins.
+The console is reached through the board's USB-to-UART/I2C USB connector
+(MCP2221A); no wiring is required in the default configuration. As an
+alternative, LPUART6 (PTA15/PTA16) is routed to the OpenSDA virtual COM port
+and can be selected by moving the corresponding zero-ohm resistors (see the
+hardware user manual, "USB to I2C/UART Interface").
 
 Programming and Debugging
 *************************
@@ -71,7 +81,7 @@ Programming and Debugging
 
 Applications for the ``s32k3x8evb/s32k358`` board can be built in the usual
 way (see :ref:`build_an_application`). Flashing and debugging use an external
-SEGGER J-Link probe attached to one of the JTAG connectors.
+SEGGER J-Link probe attached to one of the JTAG/Cortex Debug connectors.
 
 .. warning::
    Every J-Link operation on S32K3 devices (flash, reset, attach) must pass
@@ -95,8 +105,8 @@ Here is an example for the :zephyr:code-sample:`hello_world` application:
    west flash --runner jlink \
      --tool-opt="-JLinkScriptFile /path/to/S32K3xx_NoRAMInit.JLinkScript"
 
-Open a serial terminal at 115200 8N1 on the console UART; after reset the
-board shows the Zephyr banner:
+Open a serial terminal at 115200 8N1 on the MCP2221A virtual COM port; after
+reset the board shows the Zephyr banner:
 
 .. code-block:: console
 
@@ -108,4 +118,5 @@ References
 
 - `S32K3X8EVB-Q289 product page
   <https://www.nxp.com/design/design-center/development-boards-and-designs/automotive-development-platforms/s32k-mcu-platforms/s32k3x8evb-q289-evaluation-board-for-automotive-general-purpose:S32K3X8EVB-Q289>`_
+- S32K3X8EVB-Q289 Hardware User Manual, rev. C (NXP, registration required)
 - `S32K3 MCU family <https://www.nxp.com/products/S32K3>`_

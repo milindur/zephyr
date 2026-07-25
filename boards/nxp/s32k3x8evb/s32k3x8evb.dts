@@ -20,33 +20,69 @@
 		zephyr,code-partition = &code_partition;
 		zephyr,itcm = &itcm;
 		zephyr,dtcm = &dtcm;
-		zephyr,console = &lpuart3;
-		zephyr,shell-uart = &lpuart3;
+		zephyr,console = &lpuart13;
+		zephyr,shell-uart = &lpuart13;
 		zephyr,flash-controller = &c40fc;
 	};
 
 	aliases {
-		led0 = &user_led;
-		sw0 = &user_button;
+		led0 = &rgbled0_red;
+		led1 = &rgbled0_green;
+		led2 = &rgbled0_blue;
+		sw0 = &user_sw0;
+		sw1 = &user_sw1;
 		watchdog0 = &swt0;
 	};
 
 	leds {
 		compatible = "gpio-leds";
 
-		user_led: led_0 {
+		/* User RGB LEDs D32/D33, driven through NPN transistors */
+		rgbled0_red: led_0 {
+			gpios = <&gpiog_h 13 GPIO_ACTIVE_HIGH>;
+			label = "RGBLED0_RED (PTG29)";
+		};
+
+		rgbled0_green: led_1 {
+			gpios = <&gpiog_h 14 GPIO_ACTIVE_HIGH>;
+			label = "RGBLED0_GREEN (PTG30)";
+		};
+
+		rgbled0_blue: led_2 {
+			gpios = <&gpiog_h 15 GPIO_ACTIVE_HIGH>;
+			label = "RGBLED0_BLUE (PTG31)";
+		};
+
+		rgbled1_red: led_3 {
 			gpios = <&gpiof_h 5 GPIO_ACTIVE_HIGH>;
-			label = "User LED (PTF21)";
+			label = "RGBLED1_RED (PTF21)";
+		};
+
+		rgbled1_green: led_4 {
+			gpios = <&gpiof_h 6 GPIO_ACTIVE_HIGH>;
+			label = "RGBLED1_GREEN (PTF22)";
+		};
+
+		rgbled1_blue: led_5 {
+			gpios = <&gpiof_h 7 GPIO_ACTIVE_HIGH>;
+			label = "RGBLED1_BLUE (PTF23)";
 		};
 	};
 
 	gpio-keys {
 		compatible = "gpio-keys";
 
-		user_button: button_0 {
-			gpios = <&gpiob_h 1 GPIO_ACTIVE_LOW>;
-			label = "User Button (PTB17)";
+		/* User push buttons SW4/SW5, active high, pulled low */
+		user_sw0: button_0 {
+			gpios = <&gpioh_l 1 GPIO_ACTIVE_HIGH>;
+			label = "USER_SW0 (PTH1)";
 			zephyr,code = <INPUT_KEY_0>;
+		};
+
+		user_sw1: button_1 {
+			gpios = <&gpioh_l 3 GPIO_ACTIVE_HIGH>;
+			label = "USER_SW1 (PTH3)";
+			zephyr,code = <INPUT_KEY_1>;
 		};
 	};
 };
@@ -86,16 +122,20 @@
 	status = "okay";
 };
 
-&gpiob_h {
-	status = "okay";
-};
-
 &gpiof_h {
 	status = "okay";
 };
 
-&lpuart3 {
-	pinctrl-0 = <&lpuart3_default>;
+&gpiog_h {
+	status = "okay";
+};
+
+&gpioh_l {
+	status = "okay";
+};
+
+&lpuart13 {
+	pinctrl-0 = <&lpuart13_default>;
 	pinctrl-names = "default";
 	current-speed = <115200>;
 	status = "okay";
