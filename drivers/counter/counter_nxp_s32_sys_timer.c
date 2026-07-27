@@ -17,6 +17,25 @@
 
 LOG_MODULE_REGISTER(nxp_s32_sys_timer, CONFIG_COUNTER_LOG_LEVEL);
 
+/*
+ * Some device headers (e.g. S32K358.h) already provide equivalent register
+ * macros with the same names; this file uses its own definitions.
+ */
+#undef STM_CCR_CEN_MASK
+#undef STM_CCR_CEN
+#undef STM_CIR_CIF_MASK
+#undef STM_CIR_CIF
+#undef STM_CMP_CMP_MASK
+#undef STM_CMP_CMP
+#undef STM_CNT_CNT_MASK
+#undef STM_CNT_CNT
+#undef STM_CR_CPS_MASK
+#undef STM_CR_CPS
+#undef STM_CR_FRZ_MASK
+#undef STM_CR_FRZ
+#undef STM_CR_TEN_MASK
+#undef STM_CR_TEN
+
 /* System Timer Module (STM) register definitions */
 /* Control */
 #define STM_CR           0x0
