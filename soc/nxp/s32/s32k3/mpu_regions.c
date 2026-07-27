@@ -26,11 +26,12 @@ static struct arm_mpu_region mpu_regions[] = {
 	MPU_REGION_ENTRY("SRAM", DT_CHOSEN_SRAM_ADDR, REGION_RAM_ATTR(REGION_SRAM_SIZE)),
 
 #ifdef CONFIG_XIP
-#if defined(CONFIG_SOC_S32K358)
+#if CONFIG_FLASH_SIZE > (4 * 1024)
 	/*
-	 * The 8 MiB code flash at 0x0040_0000 rounds up to an 8 MiB PMSAv7
-	 * region, but the base address is only 4 MiB aligned, which PMSAv7
-	 * does not allow. Cover the flash with two 4 MiB regions instead.
+	 * Code flash larger than 4 MiB (S32K358 and friends: 8 MiB at
+	 * 0x0040_0000) rounds up to an 8 MiB PMSAv7 region, but the S32K3
+	 * code flash base is only 4 MiB aligned, which PMSAv7 does not
+	 * allow. Cover the flash with two 4 MiB regions instead.
 	 */
 	MPU_REGION_ENTRY("FLASH_0", CONFIG_FLASH_BASE_ADDRESS, REGION_FLASH_ATTR(REGION_4M)),
 	MPU_REGION_ENTRY("FLASH_1", CONFIG_FLASH_BASE_ADDRESS + 0x400000,
