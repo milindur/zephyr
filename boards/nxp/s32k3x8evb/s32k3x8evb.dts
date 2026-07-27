@@ -90,6 +90,10 @@
 &pmc {
 	/* Run mode drawing from PLL requires the last-mile regulator */
 	lm-reg;
+	/* V15 comes from the on-board NPN pass transistor driven by VRC_CTRL
+	 * (J691 default position 1-2 routes V15_NPN to V15_MCU).
+	 */
+	lm-reg-base-control;
 };
 
 &c40fc {
