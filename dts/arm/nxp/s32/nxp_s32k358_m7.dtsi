@@ -324,14 +324,20 @@
 				status = "disabled";
 			};
 
+			/*
+			 * PTG25 and PTH1/3/5/7/9/11 share their WKPU channels
+			 * with legacy pads inherited from the S32K344. The
+			 * active pad is selected per channel via
+			 * DCM_GPR.DCMRWF2[WKPUn_SRC_SELECT], which resets to
+			 * the legacy pad and is programmed by no driver, so
+			 * only the legacy pad mappings are listed.
+			 */
 			gpiog_h: gpio@40291718 {
 				compatible = "nxp,siul2-gpio";
 				reg = <0x40291718 0x02>, <0x40290580 0x40>;
 				reg-names = "pgpdo", "mscr";
 				interrupt-parent = <&eirq0>;
 				interrupts = <13 29>, <14 30>, <15 31>;
-				nxp,wkpu = <&wkpu>;
-				nxp,wkpu-interrupts = <9 49>;
 				gpio-controller;
 				#gpio-cells = <2>;
 				ngpios = <16>;
@@ -347,9 +353,6 @@
 					     <4 20>, <5 21>, <6 22>, <7 23>,
 					     <8 24>, <9 25>, <10 26>, <11 27>,
 					     <12 28>;
-				nxp,wkpu = <&wkpu>;
-				nxp,wkpu-interrupts = <1 4>, <3 19>, <5 18>,
-						      <7 12>, <9 31>, <11 22>;
 				gpio-controller;
 				#gpio-cells = <2>;
 				ngpios = <13>;
