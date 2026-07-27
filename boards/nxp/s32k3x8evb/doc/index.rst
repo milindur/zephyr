@@ -87,26 +87,34 @@ Flashing
 ========
 
 .. warning::
-   Every J-Link operation on S32K3 devices (flash, reset, attach) must pass
+   Every J-Link operation on S32K3 devices (flash, reset, attach) must use
    SEGGER's ``S32K3xx_NoRAMInit.JLinkScript``. Without it, the J-Link ECC RAM
    initialization runs on the live core and corrupts the context of a running
    thread, crashing the firmware seconds to minutes later (crash signature:
-   ``PC = 0x20000000``, ``r2 = 0xdeadbeef``). Download the script from the
-   `SEGGER wiki for NXP S32K3xx <https://kb.segger.com/NXP_S32K3xx>`_ and pass
-   it on every invocation:
+   ``PC = 0x20000000``, ``r2 = 0xdeadbeef``). The J-Link runner is therefore
+   only registered when the script is available at build configuration time.
 
-   .. code-block:: console
+Download the script from the
+`SEGGER wiki for NXP S32K3xx <https://kb.segger.com/NXP_S32K3xx>`_ and place
+it at ``boards/nxp/s32k3x8evb/support/S32K3xx_NoRAMInit.JLinkScript``
+(git-ignored); ``west flash`` and ``west debug`` then attach it
+automatically. Alternatively point the build at another location:
 
-      west flash --runner jlink \
-        --tool-opt="-JLinkScriptFile /path/to/S32K3xx_NoRAMInit.JLinkScript"
+.. code-block:: console
+
+   west build -b s32k3x8evb/s32k358 samples/hello_world -- \
+     -DS32K3XX_JLINK_SCRIPT=/path/to/S32K3xx_NoRAMInit.JLinkScript
+
+Without the script the build succeeds but prints a CMake warning and
+disables the J-Link runner, so an unprotected flash or debug session cannot
+happen by accident.
 
 Here is an example for the :zephyr:code-sample:`hello_world` application:
 
 .. code-block:: console
 
    west build -b s32k3x8evb/s32k358 samples/hello_world
-   west flash --runner jlink \
-     --tool-opt="-JLinkScriptFile /path/to/S32K3xx_NoRAMInit.JLinkScript"
+   west flash --runner jlink
 
 Open a serial terminal at 115200 8N1 on the MCP2221A virtual COM port; after
 reset the board shows the Zephyr banner:
@@ -115,10 +123,6 @@ reset the board shows the Zephyr banner:
 
    *** Booting Zephyr OS build ... ***
    Hello World! s32k3x8evb/s32k358
-
-If the J-Link script file is placed at
-``boards/nxp/s32k3x8evb/support/S32K3xx_NoRAMInit.JLinkScript`` (git-ignored),
-``west flash`` and ``west debug`` pick it up automatically.
 
 Debugging
 =========
