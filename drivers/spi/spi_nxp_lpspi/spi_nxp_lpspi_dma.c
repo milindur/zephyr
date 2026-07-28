@@ -9,6 +9,9 @@
 #include <zephyr/logging/log.h>
 LOG_MODULE_DECLARE(spi_lpspi, CONFIG_SPI_LOG_LEVEL);
 
+#include <string.h>
+
+#include <zephyr/cache.h>
 #include <zephyr/drivers/dma.h>
 #include "spi_nxp_lpspi_priv.h"
 
@@ -25,10 +28,46 @@ typedef enum {
 	LPSPI_TRANSFER_STATE_INVALID = 0xFFFFFFFFUL,
 } lpspi_transfer_state_t;
 
+/* A data cache is only usable with this driver when the maintenance calls
+ * are real (sys_cache_data_*() compile to no-ops without CACHE_MANAGEMENT)
+ * and the line size is known at compile time; fail the build instead of
+ * silently transferring stale data.
+ */
+BUILD_ASSERT(!IS_ENABLED(CONFIG_DCACHE) || IS_ENABLED(CONFIG_CACHE_MANAGEMENT),
+	     "LPSPI DMA on a d-cache platform requires CACHE_MANAGEMENT");
+BUILD_ASSERT(!IS_ENABLED(CONFIG_DCACHE) || !IS_ENABLED(CONFIG_DCACHE_LINE_SIZE_DETECT),
+	     "LPSPI DMA does not support runtime-detected d-cache line sizes");
+
+/* Start the DMA scratch words on their own data cache line. Alignment only
+ * fixes the line start (unrelated data may still follow within the line),
+ * which is sufficient here: tx_nop_val only ever gets a clean, which cannot
+ * lose neighbouring data, and dummy_buffer gets no maintenance at all.
+ */
+#if defined(CONFIG_DCACHE_LINE_SIZE) && CONFIG_DCACHE_LINE_SIZE > 0
+#define LPSPI_DMA_BUF_ALIGN MAX(CONFIG_DCACHE_LINE_SIZE, sizeof(uint32_t))
+#else
+#define LPSPI_DMA_BUF_ALIGN sizeof(uint32_t)
+#endif
+
 /* dummy memory used for transferring NOP when tx buf is null */
-static uint32_t tx_nop_val; /* check compliance says no init to 0, but should be 0 in bss */
+/* check compliance says no init to 0, but should be 0 in bss */
+static uint32_t tx_nop_val __aligned(LPSPI_DMA_BUF_ALIGN);
 /* dummy memory for transferring to when RX buf is null */
-static uint32_t dummy_buffer;
+static uint32_t dummy_buffer __aligned(LPSPI_DMA_BUF_ALIGN);
+
+#ifdef CONFIG_SPI_NXP_LPSPI_DMA_RX_BOUNCE_SIZE
+BUILD_ASSERT(CONFIG_DCACHE_LINE_SIZE > 0,
+	     "DCACHE_LINE_SIZE must be configured to bounce unaligned RX buffers");
+BUILD_ASSERT(CONFIG_SPI_NXP_LPSPI_DMA_RX_BOUNCE_SIZE % CONFIG_DCACHE_LINE_SIZE == 0,
+	     "RX bounce buffer must be a multiple of the data cache line size");
+/* An RX buffer chunk needs cache-line exclusivity for the invalidate after
+ * the transfer: DMA to a buffer that shares a line with other data can lose
+ * concurrent CPU writes to that line. Chunks without line exclusivity are
+ * received through this aligned per-instance bounce buffer instead.
+ */
+#define LPSPI_DMA_RX_NEEDS_BOUNCE(buf, len)                                                        \
+	((((uintptr_t)(buf) | (len)) & (CONFIG_DCACHE_LINE_SIZE - 1)) != 0)
+#endif
 
 struct spi_dma_stream {
 	const struct device *dma_dev;
@@ -40,6 +79,15 @@ struct spi_dma_stream {
 struct spi_nxp_dma_data {
 	struct spi_dma_stream dma_rx;
 	struct spi_dma_stream dma_tx;
+
+#ifdef CONFIG_SPI_NXP_LPSPI_DMA_RX_BOUNCE_SIZE
+	/* Cache-line aligned bounce buffer for RX chunks without cache-line
+	 * exclusivity, and the user buffer the current chunk belongs to
+	 * (NULL when the chunk is received directly).
+	 */
+	uint8_t *rx_bounce;
+	uint8_t *rx_orig;
+#endif
 
 	lpspi_transfer_state_t state;
 	/* This DMA size is used in callback function for RX and TX context update.
@@ -111,9 +159,12 @@ static int lpspi_dma_tx_load(const struct device *dev, const uint8_t *buf, size_
 
 	if (buf == NULL) {
 		/* pretend that nop value comes from peripheral so dma doesn't move source */
+		sys_cache_data_flush_range(&tx_nop_val, sizeof(tx_nop_val));
 		blk_cfg->source_address = (uint32_t)&tx_nop_val;
 		stream->dma_cfg.channel_direction = PERIPHERAL_TO_PERIPHERAL;
 	} else {
+		/* DMA reads RAM directly; write back any cached data first. */
+		sys_cache_data_flush_range((void *)buf, len);
 		blk_cfg->source_address = (uint32_t)buf;
 		stream->dma_cfg.channel_direction = MEMORY_TO_PERIPHERAL;
 	}
@@ -131,11 +182,39 @@ static int lpspi_dma_rx_load(const struct device *dev, uint8_t *buf, size_t len)
 	struct spi_dma_stream *stream = &dma_data->dma_rx;
 	struct dma_block_config *blk_cfg = lpspi_dma_common_load(stream, dev, buf, len);
 
+#ifdef CONFIG_SPI_NXP_LPSPI_DMA_RX_BOUNCE_SIZE
+	/* Forget any bounce association of a previous chunk, also when this
+	 * chunk goes to the dummy buffer or a prior transfer aborted.
+	 */
+	dma_data->rx_orig = NULL;
+#endif
+
 	if (buf == NULL) {
 		/* pretend it is peripheral xfer so DMA just xfer to dummy buf */
 		stream->dma_cfg.channel_direction = PERIPHERAL_TO_PERIPHERAL;
 		blk_cfg->dest_address = (uint32_t)&dummy_buffer;
 	} else {
+		size_t maint_len = len;
+
+#ifdef CONFIG_SPI_NXP_LPSPI_DMA_RX_BOUNCE_SIZE
+		if (LPSPI_DMA_RX_NEEDS_BOUNCE(buf, len)) {
+			/* Chunk size is capped to the bounce size in
+			 * lpspi_dma_chunk_size() whenever bouncing applies.
+			 */
+			__ASSERT_NO_MSG(len <= CONFIG_SPI_NXP_LPSPI_DMA_RX_BOUNCE_SIZE);
+			dma_data->rx_orig = buf;
+			buf = dma_data->rx_bounce;
+			/* The bounce buffer exclusively owns its cache lines;
+			 * maintain the unaligned tail as a whole line to honour
+			 * the cache API contract.
+			 */
+			maint_len = ROUND_UP(len, CONFIG_DCACHE_LINE_SIZE);
+		}
+#endif
+		/* Evict the buffer from cache so no dirty line is written
+		 * back over the DMA data; invalidated again on completion.
+		 */
+		sys_cache_data_flush_and_invd_range(buf, maint_len);
 		stream->dma_cfg.channel_direction = PERIPHERAL_TO_MEMORY;
 		blk_cfg->dest_address = (uint32_t)buf;
 	}
@@ -143,6 +222,23 @@ static int lpspi_dma_rx_load(const struct device *dev, uint8_t *buf, size_t len)
 	blk_cfg->source_address = (uint32_t) &(base->RDR);
 
 	return dma_config(stream->dma_dev, stream->channel, &stream->dma_cfg);
+}
+
+/* Next DMA chunk size: the largest continuous chunk, capped to the bounce
+ * buffer size when the RX destination lacks cache-line exclusivity and will
+ * therefore be received through the bounce buffer.
+ */
+static size_t lpspi_dma_chunk_size(struct spi_context *ctx)
+{
+	size_t chunk = spi_context_max_continuous_chunk(ctx);
+
+#ifdef CONFIG_SPI_NXP_LPSPI_DMA_RX_BOUNCE_SIZE
+	if (ctx->rx_buf != NULL && LPSPI_DMA_RX_NEEDS_BOUNCE(ctx->rx_buf, chunk)) {
+		chunk = MIN(chunk, CONFIG_SPI_NXP_LPSPI_DMA_RX_BOUNCE_SIZE);
+	}
+#endif
+
+	return chunk;
 }
 
 /* Return values:
@@ -157,7 +253,7 @@ static int lpspi_dma_rxtx_load(const struct device *dev)
 	struct spi_dma_stream *rx = &dma_data->dma_rx;
 	struct spi_dma_stream *tx = &dma_data->dma_tx;
 	struct spi_context *ctx = &data->ctx;
-	size_t dma_size = spi_context_max_continuous_chunk(ctx);
+	size_t dma_size = lpspi_dma_chunk_size(ctx);
 	int ret = 0;
 
 	if (dma_size == 0) {
@@ -214,12 +310,41 @@ static void lpspi_dma_callback(const struct device *dev, void *arg, uint32_t cha
 		goto error;
 	}
 
+	/* The finished RX chunk was written to RAM behind the cache; drop any
+	 * (speculatively refilled) cached copy before anyone reads the buffer,
+	 * and copy a bounced chunk out to the user buffer. Safe against the
+	 * chunk reload below: dest_address and rx_orig are only repointed by
+	 * rx_load, which runs for a held spi_context only after this block.
+	 */
+	if (channel == rx->channel &&
+	    rx->dma_cfg.channel_direction == PERIPHERAL_TO_MEMORY) {
+		uint8_t *dest = (uint8_t *)rx->dma_blk_cfg.dest_address;
+		size_t len = rx->dma_blk_cfg.block_size;
+		size_t invd_len = len;
+
+#ifdef CONFIG_SPI_NXP_LPSPI_DMA_RX_BOUNCE_SIZE
+		if (dma_data->rx_orig != NULL) {
+			/* Bounce buffer lines are exclusively owned; see
+			 * lpspi_dma_rx_load() for the whole-line rounding.
+			 */
+			invd_len = ROUND_UP(len, CONFIG_DCACHE_LINE_SIZE);
+		}
+#endif
+		sys_cache_data_invd_range(dest, invd_len);
+#ifdef CONFIG_SPI_NXP_LPSPI_DMA_RX_BOUNCE_SIZE
+		if (dma_data->rx_orig != NULL) {
+			memcpy(dma_data->rx_orig, dest, len);
+			dma_data->rx_orig = NULL;
+		}
+#endif
+	}
+
 	switch (dma_data->state) {
 	case LPSPI_TRANSFER_STATE_ONGOING:
 		spi_context_update_tx(ctx, 1, tx->dma_blk_cfg.block_size);
 		spi_context_update_rx(ctx, 1, rx->dma_blk_cfg.block_size);
 		/* Calculate next DMA transfer size */
-		dma_data->synchronize_dma_size = spi_context_max_continuous_chunk(ctx);
+		dma_data->synchronize_dma_size = lpspi_dma_chunk_size(ctx);
 		LOG_DBG("tx len:%d rx len:%d next dma size:%d",	ctx->tx_len, ctx->rx_len,
 			dma_data->synchronize_dma_size);
 		if (dma_data->synchronize_dma_size > 0)	{
@@ -438,11 +563,24 @@ static void lpspi_isr(const struct device *dev)
 			    LPSPI_DMA_COMMON_CFG(n),						   \
 			    .dma_slot = DT_INST_DMAS_CELL_BY_NAME(n, rx, source)}},))
 
+#ifdef CONFIG_SPI_NXP_LPSPI_DMA_RX_BOUNCE_SIZE
+#define SPI_DMA_RX_BOUNCE_DEFINE(n)                                                                \
+	static uint8_t lpspi_dma_rx_bounce_##n[CONFIG_SPI_NXP_LPSPI_DMA_RX_BOUNCE_SIZE]            \
+		__aligned(LPSPI_DMA_BUF_ALIGN);
+#define SPI_DMA_RX_BOUNCE_INIT(n) .rx_bounce = lpspi_dma_rx_bounce_##n,
+#else
+#define SPI_DMA_RX_BOUNCE_DEFINE(n)
+#define SPI_DMA_RX_BOUNCE_INIT(n)
+#endif
+
 #define LPSPI_DMA_INIT(n)                                                                          \
 	SPI_NXP_LPSPI_COMMON_INIT(n)                                                               \
 	SPI_LPSPI_CONFIG_INIT(n)                                                              \
                                                                                                    \
-	static struct spi_nxp_dma_data lpspi_dma_data##n = {SPI_DMA_CHANNELS(n)};                  \
+	SPI_DMA_RX_BOUNCE_DEFINE(n)                                                                \
+                                                                                                   \
+	static struct spi_nxp_dma_data lpspi_dma_data##n = {SPI_DMA_CHANNELS(n)                    \
+							    SPI_DMA_RX_BOUNCE_INIT(n)};            \
                                                                                                    \
 	static struct lpspi_data lpspi_data_##n = {.driver_data = &lpspi_dma_data##n,        \
 							 SPI_NXP_LPSPI_COMMON_DATA_INIT(n)};       \

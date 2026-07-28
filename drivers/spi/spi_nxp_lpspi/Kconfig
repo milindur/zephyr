@@ -27,6 +27,21 @@ config SPI_NXP_LPSPI_DMA
 	  immediately with CPU, so there could be more latency between
 	  the point of requesting a transfer and when it actually starts.
 
+config SPI_NXP_LPSPI_DMA_RX_BOUNCE_SIZE
+	int "Bounce buffer size for cache-unaligned RX buffers"
+	depends on SPI_NXP_LPSPI_DMA && DCACHE && CACHE_MANAGEMENT && !DCACHE_LINE_SIZE_DETECT
+	range 32 65536
+	default 256
+	help
+	  RX buffers that are not aligned to a data cache line (start or
+	  length) cannot be safely invalidated after a DMA transfer without
+	  risking loss of concurrent CPU writes to neighbouring data on the
+	  same cache line. Such buffers are received through a per-instance
+	  cache-line aligned bounce buffer of this size and copied out after
+	  each chunk; chunks are capped to this size, so larger transfers
+	  into unaligned buffers still work, just in more chunks. Must be a
+	  multiple of the data cache line size.
+
 config SPI_NXP_LPSPI_CPU
 	bool "NXP LPSPI CPU-based driver"
 	default y
